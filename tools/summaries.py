@@ -171,7 +171,7 @@ def get_weekly_decisions_by_timeblock() -> str:
             ROUND(AVG(indoor_temp_before)::numeric, 1) as avg_indoor_before,
             ROUND(AVG(indoor_temp_after)::numeric, 1) as avg_indoor_after,
             ROUND((SUM(CASE WHEN reached_target THEN 1 ELSE 0 END)::FLOAT / NULLIF(COUNT(*), 0) * 100)::numeric, 1) as success_pct,
-            SUM(CASE WHEN fan_speed = 'AUTO' THEN 1 ELSE 0 END) as auto_used,
+            SUM(CASE WHEN fan_speed = 'auto' THEN 1 ELSE 0 END) as auto_used,
             SUM(CASE WHEN overshot THEN 1 ELSE 0 END) as overshoots,
             ROUND(SUM(CASE WHEN is_free_power = false THEN power_price * duration_minutes / 60.0 ELSE 0 END)::numeric, 3) as paid_cost
         FROM ac_decisions
