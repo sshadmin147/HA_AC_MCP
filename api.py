@@ -319,7 +319,7 @@ def list_tools() -> dict[str, list[str]]:
         "get_this_week_summary", "get_last_n_decisions",
         "store_decision", "record_outcome", "get_pending_outcomes",
         "get_weekly_aggregates_for_summary", "store_weekly_summary",
-        "get_recent_weekly_summaries", "store_seasonal_summary",
+        "get_recent_weekly_summaries", "get_weekly_decisions_by_timeblock", "store_seasonal_summary",
         "get_all_seasonal_summaries", "store_master_patterns", "run_cleanup",
     ]}
 
@@ -375,7 +375,7 @@ def call_tool(body: ToolCall) -> dict[str, Any]:
             )
         elif name == "get_weekly_decisions_by_timeblock":
             result = get_weekly_decisions_by_timeblock()
-            
+
         elif name == "get_recent_weekly_summaries":
             result = get_recent_weekly_summaries(args.get("count", 4))
         elif name == "store_seasonal_summary":
