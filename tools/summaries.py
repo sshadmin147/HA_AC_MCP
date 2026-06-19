@@ -116,3 +116,76 @@ def get_weekly_aggregates_for_summary() -> dict[str, Any]:
         AND outcome_recorded_at IS NOT NULL
     """)
     return dict(rows[0]) if rows else {}
+
+def get_weekly_decisions_by_timeblock() -> str:
+    """Get this week's decisions broken into daytime (6am-10pm) and overnight (10pm-6am) blocks."""
+    rows = execute_query("""
+        SELECT
+            CASE 
+                WHEN EXTRACT(HOUR FROM timestamp AT TIME ZONE 'Pacific/Auckland') >= 22 
+                  OR EXTRACT(HOUR FROM timestamp AT TIME ZONE 'Pacific/Auckland') < 6 
+                THEN 'overnight'
+                ELSE 'daytime'
+            END as period,
+            EXTRACT(HOUR FROM timestamp AT TIME ZONE 'Pacific/Auckland')::int as hour_nz,
+            COUNT(*) as decisions,
+            AVG(indoor_temp_before) as avg_temp_before,
+            AVG(indoor_temp_after) as avg_temp_after,
+            AVG(indoor_temp_after - indoor_temp_before) as avg_delta,
+            SUM(CASE WHEN reached_target THEN 1 ELSE 0 END)::FLOAT / NULLIF(COUNT(*), 0) * 100 as success_rate,
+            SUM(CASE WHEN fan_speed = 'HIGH' THEN 1 ELSE 0 END) as high_count,
+            SUM(CASE WHEN fan_speed = 'MED' THEN 1 ELSE 0 END) as med_count,
+            SUM(CASE WHEN fan_speed = 'LOW' THEN 1 ELSE 0 END) as low_count,
+            SUM(CASE WHEN fan_speed = 'AUTO' THEN 1 ELSE 0 END) as auto_count,
+            SUM(CASE WHEN fan_speed = 'off' THEN 1 ELSE 0 END) as off_count,
+            SUM(CASE WHEN is_free_power THEN 1 ELSE 0 END) as free_power_decisions,
+            AVG(CASE WHEN is_free_power = false THEN power_price * duration_minutes / 60.0 END) as avg_paid_cost,
+            SUM(CASE WHEN overshot THEN 1 ELSE 0 END) as overshoot_count
+        FROM ac_decisions
+        WHERE timestamp >= NOW() - INTERVAL '7 days'
+        AND outcome_recorded_at IS NOT NULL
+        GROUP BY period, hour_nz
+        ORDER BY period, hour_nz
+    """)
+
+    if not rows:
+        return "No time-block data available yet."
+
+    # Organise into daytime and overnight blocks
+    daytime = [dict(r) for r in rows if r['period'] == 'daytime']
+    overnight = [dict(r) for r in rows if r['period'] == 'overnight']
+
+    # Also get 12-hour summary blocks
+    blocks = execute_query("""
+        SELECT
+            CASE
+                WHEN EXTRACT(HOUR FROM timestamp AT TIME ZONE 'Pacific/Auckland') >= 6
+                 AND EXTRACT(HOUR FROM timestamp AT TIME ZONE 'Pacific/Auckland') < 12 THEN '06:00-12:00 (Morning)'
+                WHEN EXTRACT(HOUR FROM timestamp AT TIME ZONE 'Pacific/Auckland') >= 12
+                 AND EXTRACT(HOUR FROM timestamp AT TIME ZONE 'Pacific/Auckland') < 18 THEN '12:00-18:00 (Afternoon)'
+                WHEN EXTRACT(HOUR FROM timestamp AT TIME ZONE 'Pacific/Auckland') >= 18
+                 AND EXTRACT(HOUR FROM timestamp AT TIME ZONE 'Pacific/Auckland') < 22 THEN '18:00-22:00 (Evening)'
+                ELSE '22:00-06:00 (Overnight)'
+            END as block,
+            COUNT(*) as decisions,
+            ROUND(AVG(indoor_temp_before)::numeric, 1) as avg_indoor_before,
+            ROUND(AVG(indoor_temp_after)::numeric, 1) as avg_indoor_after,
+            ROUND((SUM(CASE WHEN reached_target THEN 1 ELSE 0 END)::FLOAT / NULLIF(COUNT(*), 0) * 100)::numeric, 1) as success_pct,
+            SUM(CASE WHEN fan_speed = 'AUTO' THEN 1 ELSE 0 END) as auto_used,
+            SUM(CASE WHEN overshot THEN 1 ELSE 0 END) as overshoots,
+            ROUND(SUM(CASE WHEN is_free_power = false THEN power_price * duration_minutes / 60.0 ELSE 0 END)::numeric, 3) as paid_cost
+        FROM ac_decisions
+        WHERE timestamp >= NOW() - INTERVAL '7 days'
+        AND outcome_recorded_at IS NOT NULL
+        GROUP BY block
+        ORDER BY block
+    """)
+
+    block_summary = [dict(r) for r in blocks] if blocks else []
+
+    import json
+    return json.dumps({
+        "four_hour_blocks": block_summary,
+        "hourly_daytime": daytime,
+        "hourly_overnight": overnight
+    }, indent=2, default=str)

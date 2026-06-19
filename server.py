@@ -180,7 +180,12 @@ async def list_tools() -> list[Tool]:
             name="run_cleanup",
             description="Delete raw decisions older than 30 days and stale queue entries. Run weekly.",
             inputSchema={"type": "object", "properties": {}, "required": []}
-        )
+        ),
+        Tool(
+            name="get_weekly_decisions_by_timeblock",
+            description="Get this week's decisions broken into 4-hour blocks and hourly daytime/overnight splits for weekly summary analysis.",
+            inputSchema={"type": "object", "properties": {}, "required": []}
+        ),
     ]
 
 
@@ -268,6 +273,10 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 
         elif name == "run_cleanup":
             result = run_cleanup()
+
+        elif name == "get_weekly_decisions_by_timeblock":
+            from tools.summaries import get_weekly_decisions_by_timeblock
+            result = get_weekly_decisions_by_timeblock()
 
         else:
             result = f"Unknown tool: {name}"
