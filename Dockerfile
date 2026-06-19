@@ -9,4 +9,6 @@ COPY . .
 
 ENV PYTHONUNBUFFERED=1
 
-CMD ["python", "server.py"]
+EXPOSE 5250
+
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
