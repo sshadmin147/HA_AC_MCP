@@ -18,8 +18,11 @@ from tools.patterns import (
     get_all_seasonal_summaries
 )
 from tools.summaries import (
-    get_this_week_summary, get_recent_weekly_summaries,
-    store_weekly_summary, get_weekly_aggregates_for_summary
+    get_this_week_summary,
+    get_recent_weekly_summaries,
+    store_weekly_summary,
+    get_weekly_aggregates_for_summary,
+    get_weekly_decisions_by_timeblock
 )
 
 app = FastAPI(title="AC Context Brain", version="1.0.0")
@@ -370,6 +373,9 @@ def call_tool(body: ToolCall) -> dict[str, Any]:
                 season=args["season"],
                 summary_json=args["summary_json"],
             )
+        elif name == "get_weekly_decisions_by_timeblock":
+            result = get_weekly_decisions_by_timeblock()
+            
         elif name == "get_recent_weekly_summaries":
             result = get_recent_weekly_summaries(args.get("count", 4))
         elif name == "store_seasonal_summary":
