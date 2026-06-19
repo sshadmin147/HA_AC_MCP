@@ -1,4 +1,5 @@
-from .db import execute_query, execute_returning
+from .db import execute_query
+from typing import Any
 import json
 
 def get_this_week_summary() -> str:
@@ -65,15 +66,15 @@ def get_recent_weekly_summaries(count: int = 4) -> str:
     return result
 
 
-def store_weekly_summary(week_start: str, week_end: str, season: str, summary_json: dict) -> str:
+def store_weekly_summary(week_start: str, week_end: str, season: str, summary_json: dict[str, Any]) -> str:
     """Store a weekly summary."""
-    execute_returning("""
+    execute_query("""
         INSERT INTO weekly_summaries (week_start_date, week_end_date, season, summary_json, created_at)
         VALUES (%s, %s, %s, %s, NOW())
         ON CONFLICT (week_start_date) DO UPDATE SET
             summary_json = EXCLUDED.summary_json,
             created_at = NOW()
-    """, (week_start, week_end, season, json.dumps(summary_json)))
+    """, (week_start, week_end, season, json.dumps(summary_json)), fetch=False)
 
     # Cleanup summaries older than 24 months
     execute_query("""
@@ -84,7 +85,7 @@ def store_weekly_summary(week_start: str, week_end: str, season: str, summary_js
     return f"Weekly summary for {week_start} to {week_end} stored."
 
 
-def get_weekly_aggregates_for_summary() -> dict:
+def get_weekly_aggregates_for_summary() -> dict[str, Any]:
     """Get raw aggregates for the past 7 days to feed into Claude weekly summary prompt."""
     rows = execute_query("""
         SELECT

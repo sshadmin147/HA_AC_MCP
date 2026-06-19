@@ -1,5 +1,6 @@
 from .db import execute_query, execute_returning
 from datetime import datetime, timedelta
+from typing import Any
 import json
 
 def store_decision(
@@ -16,7 +17,7 @@ def store_decision(
     power_price: float,
     is_free_power: bool,
     reasoning: str,
-    wind_chill: float = None
+    wind_chill: float | None = None
 ) -> str:
     """Store an AC decision and queue outcome recording for 35 minutes later."""
     ts = datetime.fromisoformat(timestamp)
@@ -48,6 +49,8 @@ def store_decision(
         json.dumps({"reasoning": reasoning})
     ))
 
+    if row is None:
+        raise RuntimeError("INSERT into ac_decisions returned no row")
     decision_id = row['id']
 
     # Schedule outcome recording
@@ -79,7 +82,7 @@ def get_last_n_decisions(count: int = 2) -> str:
 
     result = "## Recent Decisions\n\n"
     for row in rows:
-        delta = None
+        delta: float | None = None
         if row['indoor_temp_after'] is not None and row['indoor_temp_before'] is not None:
             delta = row['indoor_temp_after'] - row['indoor_temp_before']
 
@@ -154,7 +157,7 @@ def record_outcome(decision_id: int, indoor_temp_after: float, notes: str = "") 
 - Time elapsed: {time_to_target:.0f} minutes"""
 
 
-def get_pending_outcomes() -> list:
+def get_pending_outcomes() -> list[dict[str, Any]]:
     """Get decisions due for outcome recording."""
     rows = execute_query("""
         SELECT oq.id as queue_id, oq.decision_id, oq.scheduled_for,
@@ -169,11 +172,10 @@ def get_pending_outcomes() -> list:
 
 def run_cleanup() -> str:
     """Delete raw decisions older than 30 days and stale queue entries."""
-    deleted_decisions = execute_query("""
+    deleted_count = execute_query("""
         DELETE FROM ac_decisions
         WHERE timestamp < NOW() - INTERVAL '30 days'
-        RETURNING id
-    """)
+    """, fetch=False)
 
     execute_query("""
         DELETE FROM outcome_queue
@@ -183,4 +185,4 @@ def run_cleanup() -> str:
         )
     """, fetch=False)
 
-    return f"Cleanup complete. Removed {len(deleted_decisions) if deleted_decisions else 0} old decisions."
+    return f"Cleanup complete. Removed {deleted_count} old decisions."

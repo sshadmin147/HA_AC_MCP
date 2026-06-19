@@ -1,4 +1,5 @@
 from .db import execute_query, execute_returning
+from typing import Any
 import json
 
 def get_master_patterns() -> str:
@@ -38,7 +39,7 @@ def get_seasonal_baseline(season: str) -> str:
 {focus}"""
 
 
-def store_master_patterns(patterns_text: str, word_count: int, data_sources: list) -> str:
+def store_master_patterns(patterns_text: str, word_count: int, data_sources: list[str]) -> str:
     """Store a new master patterns version, keeping only latest 2."""
     row = execute_returning("""
         INSERT INTO master_patterns (version, patterns_text, word_count, last_updated, data_source)
@@ -48,6 +49,9 @@ def store_master_patterns(patterns_text: str, word_count: int, data_sources: lis
         )
         RETURNING id, version
     """, (patterns_text, word_count, json.dumps({"sources": data_sources})))
+
+    if row is None:
+        raise RuntimeError("INSERT into master_patterns returned no row")
 
     # Prune to latest 2 versions
     execute_query("""
@@ -62,9 +66,9 @@ def store_master_patterns(patterns_text: str, word_count: int, data_sources: lis
     return f"Master patterns stored as version {row['version']}."
 
 
-def store_seasonal_summary(season: str, summary_text: str, key_thresholds: dict, next_season_focus: list) -> str:
+def store_seasonal_summary(season: str, summary_text: str, key_thresholds: dict[str, Any], next_season_focus: list[str]) -> str:
     """Store or update a seasonal summary."""
-    execute_returning("""
+    execute_query("""
         INSERT INTO seasonal_summaries (season, summary_text, key_thresholds, next_season_focus, created_at, quarter_end_date)
         VALUES (%s, %s, %s, %s, NOW(), CURRENT_DATE)
         ON CONFLICT (season) DO UPDATE SET
@@ -72,7 +76,7 @@ def store_seasonal_summary(season: str, summary_text: str, key_thresholds: dict,
             key_thresholds = EXCLUDED.key_thresholds,
             next_season_focus = EXCLUDED.next_season_focus,
             created_at = NOW()
-    """, (season, summary_text, json.dumps(key_thresholds), json.dumps(next_season_focus)))
+    """, (season, summary_text, json.dumps(key_thresholds), json.dumps(next_season_focus)), fetch=False)
     return f"Seasonal summary for {season} stored."
 
 
