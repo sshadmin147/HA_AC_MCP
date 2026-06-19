@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__n8n__get_sdk_reference",
+      "mcp__n8n__get_workflow_best_practices",
+      "mcp__n8n__search_nodes",
+      "mcp__n8n__get_node_types",
+      "mcp__n8n__validate_node_config",
+      "mcp__n8n__validate_workflow",
+      "mcp__n8n__create_workflow_from_code",
+      "mcp__n8n__search_workflows",
+      "mcp__n8n__get_workflow_details",
+      "mcp__n8n__update_workflow",
+      "mcp__n8n__publish_workflow",
+      "mcp__n8n__unpublish_workflow",
+      "mcp__n8n__archive_workflow",
+      "mcp__n8n__execute_workflow",
+      "mcp__n8n__test_workflow",
+      "mcp__n8n__get_execution",
+      "mcp__n8n__search_executions",
+      "mcp__n8n__list_credentials",
+      "mcp__n8n__search_projects",
+      "mcp__n8n__search_folders",
+      "mcp__n8n__create_data_table",
+      "mcp__n8n__search_data_tables",
+      "mcp__n8n__add_data_table_rows",
+      "mcp__n8n__add_data_table_column",
+      "mcp__n8n__delete_data_table_column",
+      "mcp__n8n__rename_data_table",
+      "mcp__n8n__rename_data_table_column",
+      "mcp__n8n__prepare_test_pin_data"
+    ]
+  }
+}
