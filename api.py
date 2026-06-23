@@ -1,6 +1,7 @@
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
@@ -26,11 +27,20 @@ from tools.summaries import (
 )
 
 app = FastAPI(title="AC Context Brain", version="1.0.0")
-
+_NZ = ZoneInfo("Pacific/Auckland")
 
 # ---------------------------------------------------------------------------
 # Dashboard helpers
 # ---------------------------------------------------------------------------
+
+def _nz_ts(dt: datetime | None) -> str:
+    """Format a datetime as NZT, gracefully handling naive (UTC) and aware timestamps."""
+    if dt is None:
+        return '?'
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    nz = dt.astimezone(_NZ)
+    return nz.strftime(f'%a %d %b, %H:%M {nz.strftime("%Z")}')
 
 def _raw_decisions(count: int) -> list[dict[str, Any]]:
     rows = execute_query("""
@@ -56,7 +66,7 @@ def _stat_card(label: str, value: str, sub: str = "", color: str = "text-white")
 
 
 def _decision_card(d: dict[str, Any]) -> str:
-    ts = d['timestamp'].strftime('%a %d %b, %H:%M') if d['timestamp'] else '?'
+    ts = _nz_ts(d['timestamp'])
 
     if d['ac_mode'] == 'heat':
         mode_col, mode_icon = "text-orange-400", "🔥"
