@@ -68,7 +68,7 @@ def get_last_n_decisions(count: int = 2) -> str:
     """Fetch last N decisions with outcomes."""
     rows = execute_query("""
         SELECT
-            id, timestamp, ac_mode, fan_speed, temperature, duration_minutes,
+            id, timestamp, ac_mode, fan_speed, duration_minutes,
             indoor_temp_before, indoor_temp_after,
             reached_target, overshot, overshot_by,
             ai_reasoning
@@ -76,23 +76,27 @@ def get_last_n_decisions(count: int = 2) -> str:
         ORDER BY timestamp DESC
         LIMIT %s
     """, (count,))
+
     if not rows:
         return "No decisions recorded yet."
+
     result = "## Recent Decisions\n\n"
     for row in rows:
         delta: float | None = None
         if row['indoor_temp_after'] is not None and row['indoor_temp_before'] is not None:
             delta = row['indoor_temp_after'] - row['indoor_temp_before']
+
         status = "✓ REACHED" if row['reached_target'] else ("✗ MISSED" if row['reached_target'] is not None else "⏳ PENDING")
         overshoot_str = f" (overshot {row['overshot_by']:.1f}°C)" if row['overshot'] and row['overshot_by'] else ""
         delta_str = f"{delta:+.2f}°C" if delta is not None else "pending"
         reasoning = row['ai_reasoning'].get('reasoning', 'N/A') if row['ai_reasoning'] else 'N/A'
-        temp_str = f"{int(row['temperature'])}°C" if row['temperature'] is not None else "N/A"
+
         result += f"""### Decision #{row['id']} — {row['timestamp'].strftime('%H:%M on %A')}
-- Mode: {row['ac_mode'].upper()} | Fan: {row['fan_speed']} | Temp: {temp_str} | Duration: {row['duration_minutes']}min
+- Mode: {row['ac_mode'].upper()} | Fan: {row['fan_speed']} | Duration: {row['duration_minutes']}min
 - Indoor: {row['indoor_temp_before']}°C → {row['indoor_temp_after'] or '?'}°C (delta: {delta_str})
 - Status: {status}{overshoot_str}
 - Reasoning: {reasoning}
+
 """
     return result
 
