@@ -115,11 +115,21 @@ def record_outcome(decision_id: int, indoor_temp_after: float, notes: str = "") 
     temp_before = row['indoor_temp_before']
     delta = indoor_temp_after - temp_before
 
-    # Comfort range: 20-22°C
-    reached_target = 20.0 <= indoor_temp_after <= 22.0
-    overshot = indoor_temp_after > 22.0
-    overshot_by = round(indoor_temp_after - 22.0, 2) if overshot else None
+    # Time-aware comfort bands (NZ local time)
+    from zoneinfo import ZoneInfo
+    nz = ZoneInfo("Pacific/Auckland")
+    hour_nz = row['timestamp'].astimezone(nz).hour
+    overnight = hour_nz >= 22 or hour_nz < 6
 
+    if overnight:
+        target_min, target_max = 15.5, 17.5
+    else:
+        target_min, target_max = 19.0, 23.0
+
+    reached_target = target_min <= indoor_temp_after <= target_max
+    overshot = indoor_temp_after > target_max
+    overshot_by = round(indoor_temp_after - target_max, 2) if overshot else None
+    
     time_to_target = (datetime.now(tz=row['timestamp'].tzinfo) - row['timestamp']).total_seconds() / 60
 
     execute_returning("""
